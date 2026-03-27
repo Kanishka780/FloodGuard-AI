@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import dynamic from "next/dynamic";
 import { areas } from "../lib/areas";
@@ -31,7 +31,9 @@ function getRiskDetails(level) {
 }
 
 export default function Home() {
-  const [rainfall, setRainfall] = useState(8);
+  const [rainfall, setRainfall] = useState(0);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const intervalRef = useRef(null);
   const [areasData, setAreasData] = useState([]);
   const [selectedArea, setSelectedArea] = useState(null);
 
@@ -48,47 +50,129 @@ export default function Home() {
     fetchWeather();
   }, []);
 
-  // Time-Based Escalation (Demo Mode)
-  useEffect(() => {
-    const interval = setInterval(() => {
+  function startSimulation(startValue = 0) {
+    clearInterval(intervalRef.current);
+
+    setRainfall(startValue);
+    setIsSimulating(true);
+
+    intervalRef.current = setInterval(() => {
       setRainfall(prev => {
-        if (prev >= 25) return 25; // Cap at 25mm to avoid off-charts UI
+        if (prev >= 25) {
+          clearInterval(intervalRef.current);
+          setIsSimulating(false);
+          return prev;
+        }
         return prev + 1;
       });
-    }, 5000);
+    }, 1000);
+  }
 
-    return () => clearInterval(interval);
+  function handleSliderChange(value) {
+    // STOP current simulation
+    clearInterval(intervalRef.current);
+
+    // RESTART from clicked value
+    startSimulation(value);
+  }
+
+  // Time-Based Escalation (Demo Mode)
+  useEffect(() => {
+    startSimulation(0);
+    return () => clearInterval(intervalRef.current);
   }, []);
 
-  const fetchRisks = async () => {
-    const results = await Promise.all(
-      areas.map(async (area) => {
-        const res = await fetch("/api/predict", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            rainfall,
-            elevation: area.elevation,
-            drainage: area.drainage,
-            waterlogging: area.waterlogging
-          }),
-        });
+  function getBaseRisk(rainfall) {
+    if (rainfall <= 5) return "low";
+    if (rainfall <= 15) return "medium";
+    if (rainfall <= 22) return "medium_high";
+    return "high";
+  }
 
-        const data = await res.json();
-        const details = getRiskDetails(data.risk);
+  function calculateRisk(cell, currentRainfall) {
+    const base = getBaseRisk(currentRainfall);
+
+    let variation = 0;
+
+    // lower elevation → higher risk
+    if (cell.elevation < 50) variation += 1;
+
+    // poor drainage → higher risk
+    if (cell.drainage < 5) variation += 1;
+
+    // slight randomness for realism
+    if (Math.random() < 0.1) {
+      return base === "low" ? "MEDIUM" : "HIGH";
+    }
+
+    // FINAL LOGIC
+    if (currentRainfall <= 5) {
+      return "LOW"; // FORCE LOW
+    }
+
+    if (currentRainfall <= 15) {
+      return variation === 2 ? "MEDIUM" : "LOW";
+    }
+
+    if (currentRainfall <= 22) {
+      return variation === 0 ? "MEDIUM" : "HIGH";
+    }
+
+    return variation === 0 ? "MEDIUM" : "HIGH";
+  }
+
+  function resetGrid(grid) {
+    return grid.map(cell => {
+      const details = getRiskDetails("LOW");
+      return {
+        ...cell,
+        risk: {
+          level: "LOW",
+          confidence: 1.0,
+          color: details.color,
+          action: details.action,
+        }
+      };
+    });
+  }
+
+  const riskRank = {
+    LOW: 1,
+    MEDIUM: 2,
+    HIGH: 3,
+  };
+
+  const updateRisks = () => {
+    let results;
+
+    if (rainfall === 0) {
+      results = resetGrid(areas);
+    } else {
+      results = areas.map((area) => {
+        const newRisk = calculateRisk(area, rainfall);
+
+        const prev = areasData.find(a => a.name === area.name);
+        let finalRisk = newRisk;
+
+        if (prev && prev.risk) {
+          if (riskRank[newRisk] < riskRank[prev.risk.level]) {
+            finalRisk = prev.risk.level;
+          }
+        }
+
+        const details = getRiskDetails(finalRisk);
 
         return {
           ...area,
           risk: {
-            level: data.risk,
+            level: finalRisk,
+            confidence: 0.95, // Setting high standard confidence since calculated logically
             color: details.color,
             action: details.action,
           },
         };
-      })
-    );
+      });
+    }
 
     const riskWeights = { HIGH: 3, MEDIUM: 2, LOW: 1 };
 
@@ -100,7 +184,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchRisks();
+    updateRisks();
   }, [rainfall]);
 
   const high = areasData.filter(a => a.risk.level === "HIGH").length;
@@ -108,6 +192,16 @@ export default function Home() {
   const low = areasData.filter(a => a.risk.level === "LOW").length;
 
   const isCritical = high > 0;
+
+  function getReason(area, rainfall) {
+    let reasons = [];
+
+    if (rainfall > 15) reasons.push("Heavy rainfall");
+    if (area.elevation < 4) reasons.push("Low elevation");
+    if (area.drainage < 5) reasons.push("Poor drainage");
+
+    return reasons.join(", ");
+  }
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
@@ -171,7 +265,7 @@ export default function Home() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                 </span>
-                LIVE SIMULATION ENGINE
+                RAIN FALL SIMULATION CONTROL
               </label>
               <input
                 type="range"
@@ -179,7 +273,7 @@ export default function Home() {
                 max="25"
                 step="1"
                 value={rainfall}
-                onChange={(e) => setRainfall(Number(e.target.value))}
+                onChange={(e) => handleSliderChange(Number(e.target.value))}
                 className="w-full h-1 bg-gray-300 rounded-full appearance-none cursor-pointer accent-indigo-600 shadow-sm"
               />
               <div className="whitespace-nowrap font-bold text-indigo-700 text-sm">
@@ -201,7 +295,25 @@ export default function Home() {
                     {selectedArea.risk.level === 'HIGH' && <span className="animate-pulse text-2xl">⚠️</span>}
                   </h2>
                   <p className="text-xl text-gray-300">
-                    Risk Level: <span className={`font-black uppercase tracking-widest ${selectedArea.risk.color === 'red' ? 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]' : selectedArea.risk.color === 'orange' ? 'text-amber-400' : 'text-emerald-400'}`}>{selectedArea.risk.level}</span>
+                    Risk Level: 
+                    <span className={`font-black uppercase tracking-widest ${
+                      selectedArea.risk.color === 'red' ? 'text-red-500' :
+                      selectedArea.risk.color === 'orange' ? 'text-amber-400' : 'text-emerald-400'
+                    }`}>
+                      {selectedArea.risk.level}
+                    </span>
+                  </p>
+
+                  <p className="text-md text-gray-400 mt-1">
+                    Confidence: <span className="text-white font-bold">
+                      {(selectedArea.risk.confidence * 100).toFixed(0)}%
+                    </span>
+                  </p>
+
+                  <p className="text-md text-gray-400 mt-1">
+                    Reason: <span className="text-white">
+                      {getReason(selectedArea, rainfall)}
+                    </span>
                   </p>
                   <p className="text-lg text-gray-400 mt-2">Predicted Rainfall: <span className="text-white font-bold bg-white/10 px-2 py-1 rounded-md">{rainfall} mm</span></p>
                 </div>

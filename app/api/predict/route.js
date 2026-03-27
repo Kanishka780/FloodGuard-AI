@@ -16,10 +16,16 @@ export async function POST(req) {
             new Response(JSON.stringify({ error: stderr }), { status: 500 })
           );
         } else {
+          const [level, confidence] = stdout.trim().split(",");
+
           resolve(
-            new Response(JSON.stringify({ risk: stdout.trim() }), {
-              status: 200,
-            })
+            new Response(
+              JSON.stringify({
+                risk: level,
+                confidence: parseFloat(confidence),
+              }),
+              { status: 200 }
+            )
           );
         }
       }
