@@ -214,9 +214,9 @@ export default function Home() {
       )}
 
       {/* MAIN CONTENT */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* SIDEBAR */}
-        <div className="w-[280px] flex-shrink-0 h-full overflow-y-auto border-r bg-white z-20">
+        <div className="w-full lg:w-[280px] flex-shrink-0 h-[35vh] lg:h-full overflow-y-auto border-b lg:border-r lg:border-b-0 bg-white z-20">
           <Sidebar areasData={areasData} onSelect={setSelectedArea} />
         </div>
 
@@ -224,14 +224,14 @@ export default function Home() {
         <div className="flex-1 flex flex-col h-full relative">
           
           {/* HEADER */}
-          <div className="bg-white shadow-sm z-10 border-b border-gray-200 p-5 pb-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight flex items-center gap-3">
-                <span className="text-4xl drop-shadow-sm">🌊</span> 
+          <div className="bg-white shadow-sm z-10 border-b border-gray-200 p-4 md:p-5 pb-5 md:pb-6">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight flex items-center gap-2 md:gap-3">
+                <span className="text-3xl md:text-4xl drop-shadow-sm">🌊</span> 
                 FloodGuard AI Dashboard
               </h1>
               
-              <div className="flex gap-4 opacity-95 items-center">
+              <div className="flex flex-wrap gap-2 md:gap-4 opacity-95 items-center w-full lg:w-auto">
                 {isCritical ? (
                   <div className="hidden lg:flex flex-col bg-gray-900 border border-red-800 rounded-lg p-2 px-4 shadow-lg mr-2">
                     <p className="text-[10px] font-extrabold text-red-500 uppercase tracking-widest mb-1 flex items-center gap-1"><span className="animate-pulse">🚨</span> PRIORITY ZONES</p>
@@ -259,8 +259,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-3 bg-slate-50 p-2 px-4 rounded-lg border border-gray-200 shadow-inner flex items-center gap-4 max-h-[60px]">
-              <label className="whitespace-nowrap font-bold text-gray-700 font-mono text-xs tracking-wider uppercase flex items-center gap-2">
+            <div className="mt-3 bg-slate-50 p-3 lg:p-2 px-4 rounded-lg border border-gray-200 shadow-inner flex flex-col lg:flex-row items-start lg:items-center gap-2 lg:gap-4 min-h-[60px]">
+              <label className="whitespace-nowrap font-bold text-gray-700 font-mono text-[10px] md:text-xs tracking-wider uppercase flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
@@ -287,8 +287,8 @@ export default function Home() {
             <MapComponent areasData={areasData} onSelect={setSelectedArea} />
           
           {selectedArea && (
-            <div className="absolute bottom-0 left-0 w-full bg-gray-900 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] text-white p-7 z-[1000] border-t-4 border-indigo-500 rounded-tr-2xl rounded-tl-2xl backdrop-blur-lg bg-opacity-95 transition-all">
-              <div className="flex justify-between items-start">
+            <div className="absolute bottom-0 left-0 w-full max-h-[70vh] overflow-y-auto bg-gray-900 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] text-white p-5 md:p-7 z-[1000] border-t-4 border-indigo-500 rounded-tr-2xl rounded-tl-2xl backdrop-blur-lg bg-opacity-95 transition-all">
+              <div className="flex flex-col lg:flex-row justify-between items-start gap-5 lg:gap-4">
                 <div>
                   <h2 className="text-4xl font-extrabold mb-2 flex items-center gap-3">
                     {selectedArea.name}
@@ -318,7 +318,7 @@ export default function Home() {
                   <p className="text-lg text-gray-400 mt-2">Predicted Rainfall: <span className="text-white font-bold bg-white/10 px-2 py-1 rounded-md">{rainfall} mm</span></p>
                 </div>
                 
-                <div className="bg-[#2a1f1a] p-4 py-5 rounded-xl border border-yellow-500 shadow-lg min-w-[280px]">
+                <div className="bg-[#2a1f1a] p-4 py-5 rounded-xl border border-yellow-500 shadow-lg w-full lg:min-w-[280px]">
                   {selectedArea.risk.level === "HIGH" && (
                     <div className="text-left space-y-1">
                       <p className="text-red-400 font-extrabold text-lg tracking-wide drop-shadow-md">⚠️ Critical window: &lt; 2 hours</p>
